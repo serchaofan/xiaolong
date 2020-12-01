@@ -19,7 +19,7 @@ from django.urls import path
 from rest_framework.documentation import include_docs_urls
 from rest_framework.routers import DefaultRouter
 
-import k8s.views as k8sviews
+import k8s.views as k8s_views
 
 router = DefaultRouter()
 
@@ -29,7 +29,13 @@ urlpatterns = [
     url(r'^docs/', include_docs_urls("文档")),
     url(r'^api-auth', include("rest_framework.urls", namespace="rest_framework")),
     # k8s
-    url(r'^api/namespaces$', k8sviews.NamespaceList.as_view()),
-    url(r'^api/pods$', k8sviews.PodList.as_view()),
-    url(r'^api/nodes$', k8sviews.NodeList.as_view())
+    url(r'^api/namespaces$', k8s_views.NamespaceList.as_view()),
+    url(r'^api/pods$', k8s_views.PodList.as_view()),
+    url(r'^api/nodes$', k8s_views.NodeList.as_view()),
+    url(r'^api/deployments$', k8s_views.DeploymentList.as_view()),
+    url(r'^api/daemonsets$', k8s_views.DaemonsetList.as_view()),
+    url(r'^api/replicasets$', k8s_views.ReplicasetList.as_view()),
+    url(r'^api/statefulsets$', k8s_views.StatefulsetList.as_view()),
+    url(r'^api/services$', k8s_views.ServiceList.as_view()),
+
 ]
