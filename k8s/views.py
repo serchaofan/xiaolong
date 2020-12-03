@@ -4,7 +4,7 @@ from kubernetes import config, client
 from rest_framework.views import APIView
 from loguru import logger
 import json
-from django.http import JsonResponse
+from datetime import datetime
 
 
 class NodeList(APIView):
@@ -15,11 +15,60 @@ class NodeList(APIView):
         nodes_list = []
         nodes = api.list_node().items
         for node in nodes:
+            conditions_list = []
+            for condition in node.status.conditions:
+                conditions_list.append(
+                    dict(
+                        last_heartbeat_time=condition.last_heartbeat_time,
+                        last_transition_time=condition.last_transition_time,
+                        message=condition.message,
+                        reason=condition.reason,
+                        status=condition.status,
+                        type=condition.type
+                    )
+                )
+            images_list = []
+            if node.status.images:
+                for image in node.status.images:
+                    images_list.append(
+                        dict(
+                            names=image.names,
+                            size_bytes=image.size_bytes
+                        )
+                    )
+            else:
+                images_list = []
+            addresses_list = []
+            for address in node.status.addresses:
+                addresses_list.append(
+                    dict(
+                        address=address.address,
+                        type=address.type
+                    )
+                )
+            taints_list = []
+            if node.spec.taints:
+                for taint in node.spec.taints:
+                    taints_list.append(
+                        dict(
+                            effect=taint.effect,
+                            key=taint.key,
+                            time_added=taint.time_added,
+                            value=taint.value
+                        )
+                    )
+            else:
+                taints_list = []
+
             nodes_list.append(dict(
                 name=node.metadata.name,
                 podCidr=node.spec.pod_cidr,
                 capacity=node.status.capacity,
                 allocatable=node.status.allocatable,
+                labels=node.metadata.labels,
+                annotations=node.metadata.annotations,
+                creationTimestamp=datetime.strftime(node.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+                # creationTimestamp=node.metadata.creation_timestamp,
                 nodeInfo=dict(
                     architecture=node.status.node_info.architecture,
                     boot_id=node.status.node_info.boot_id,
@@ -31,6 +80,14 @@ class NodeList(APIView):
                     os_image=node.status.node_info.os_image,
                     system_uuid=node.status.node_info.system_uuid
                 ),
+                role=node.metadata.labels['kubernetes.io/role'],
+                kubelet_version=node.status.node_info.kubelet_version,
+                conditions=conditions_list,
+                status=conditions_list[-1]['type'] if conditions_list[-1]['status']=='True' else 'NotReady',
+                images=images_list,
+                addresses=addresses_list,
+                taints=taints_list,
+                unschedulable=node.spec.unschedulable,
                 daemonEndpoints=dict(
                     kubelet_endpoint=dict(port=node.status.daemon_endpoints.kubelet_endpoint.port),
                 )
@@ -84,7 +141,7 @@ class PodList(APIView):
                     name=pod.metadata.name,
                     namespace=pod.metadata.namespace,
                     labels=pod.metadata.labels,
-                    creationTimestamp=pod.metadata.creation_timestamp,
+                    creationTimestamp=datetime.strftime(pod.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
                     hostname=pod.spec.hostname,
                     nodename=pod.spec.node_name,
                     dnsPolicy=pod.spec.dns_policy,
@@ -191,7 +248,7 @@ class DeploymentList(APIView):
                         matchLabels=deployment.spec.selector.match_labels,
                     ),
                     labels=deployment.metadata.labels,
-                    creationTimestamp=deployment.metadata.creation_timestamp,
+                    creationTimestamp=datetime.strftime(deployment.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
                     # serviceAccount=pod.spec.serviceAccount,
                     # volumes=json.pod.spec.volumes,
                     containers=containers_list,
@@ -286,7 +343,7 @@ class DaemonsetList(APIView):
                         matchLabels=daemonset.spec.selector.match_labels,
                     ),
                     labels=daemonset.metadata.labels,
-                    creationTimestamp=daemonset.metadata.creation_timestamp,
+                    creationTimestamp=datetime.strftime(daemonset.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
                     # serviceAccount=pod.spec.serviceAccount,
                     # volumes=json.pod.spec.volumes,
                     containers=containers_list,
@@ -382,7 +439,7 @@ class ReplicasetList(APIView):
                         matchLabels=replicaset.spec.selector.match_labels,
                     ),
                     labels=replicaset.metadata.labels,
-                    creationTimestamp=replicaset.metadata.creation_timestamp,
+                    creationTimestamp=datetime.strftime(replicaset.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
                     containers=containers_list,
                     status=dict(
                         available_replicas=replicaset.status.available_replicas,
@@ -473,7 +530,7 @@ class StatefulsetList(APIView):
                         matchLabels=statefulset.spec.selector.match_labels,
                     ),
                     labels=statefulset.metadata.labels,
-                    creationTimestamp=statefulset.metadata.creation_timestamp,
+                    creationTimestamp=datetime.strftime(statefulset.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
                     containers=containers_list,
                     status=dict(
                         collision_count=statefulset.status.collision_count,
@@ -509,7 +566,7 @@ class ServiceList(APIView):
                     name=service.metadata.name,
                     namespace=service.metadata.namespace,
                     labels=service.metadata.labels,
-                    creationTimestamp=service.metadata.creation_timestamp,
+                    creationTimestamp=datetime.strftime(service.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
                     clusterIP=service.spec.cluster_ip,
                     externalTrafficPolicy=service.spec.external_traffic_policy,
                     ports=[
