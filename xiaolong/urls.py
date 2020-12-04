@@ -38,4 +38,8 @@ urlpatterns = [
     url(r'^api/statefulsets$', k8s_views.StatefulsetList.as_view()),
     url(r'^api/services$', k8s_views.ServiceList.as_view()),
 
+    url(r'^api/node', k8s_views.NodeInfo.as_view()),
+    url(r'^api/pod', k8s_views.PodInfo.as_view()),
+
+
 ]

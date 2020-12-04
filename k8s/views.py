@@ -19,83 +19,113 @@ class NodeList(APIView):
             for condition in node.status.conditions:
                 conditions_list.append(
                     dict(
-                        last_heartbeat_time=condition.last_heartbeat_time,
-                        last_transition_time=condition.last_transition_time,
-                        message=condition.message,
-                        reason=condition.reason,
                         status=condition.status,
                         type=condition.type
                     )
                 )
-            images_list = []
-            if node.status.images:
-                for image in node.status.images:
-                    images_list.append(
-                        dict(
-                            names=image.names,
-                            size_bytes=image.size_bytes
-                        )
-                    )
-            else:
-                images_list = []
-            addresses_list = []
-            for address in node.status.addresses:
-                addresses_list.append(
-                    dict(
-                        address=address.address,
-                        type=address.type
-                    )
-                )
-            taints_list = []
-            if node.spec.taints:
-                for taint in node.spec.taints:
-                    taints_list.append(
-                        dict(
-                            effect=taint.effect,
-                            key=taint.key,
-                            time_added=taint.time_added,
-                            value=taint.value
-                        )
-                    )
-            else:
-                taints_list = []
-
             nodes_list.append(dict(
                 name=node.metadata.name,
-                podCidr=node.spec.pod_cidr,
-                capacity=node.status.capacity,
-                allocatable=node.status.allocatable,
                 labels=node.metadata.labels,
-                annotations=node.metadata.annotations,
                 creationTimestamp=datetime.strftime(node.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
-                # creationTimestamp=node.metadata.creation_timestamp,
-                nodeInfo=dict(
-                    architecture=node.status.node_info.architecture,
-                    boot_id=node.status.node_info.boot_id,
-                    container_runtime_version=node.status.node_info.container_runtime_version,
-                    kernel_version=node.status.node_info.kernel_version,
-                    kubelet_version=node.status.node_info.kubelet_version,
-                    machine_id=node.status.node_info.machine_id,
-                    operating_system=node.status.node_info.operating_system,
-                    os_image=node.status.node_info.os_image,
-                    system_uuid=node.status.node_info.system_uuid
-                ),
                 role=node.metadata.labels['kubernetes.io/role'],
+                status=conditions_list[-1]['type'] if conditions_list[-1]['status'] == 'True' else 'NotReady',
                 kubelet_version=node.status.node_info.kubelet_version,
-                conditions=conditions_list,
-                status=conditions_list[-1]['type'] if conditions_list[-1]['status']=='True' else 'NotReady',
-                images=images_list,
-                addresses=addresses_list,
-                taints=taints_list,
                 unschedulable=node.spec.unschedulable,
-                daemonEndpoints=dict(
-                    kubelet_endpoint=dict(port=node.status.daemon_endpoints.kubelet_endpoint.port),
-                )
             ))
 
         data = {
             'code': 20000,
             'data': nodes_list
+        }
+        return Response(data=data)
+
+
+class NodeInfo(APIView):
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.CoreV1Api()
+        name = request.query_params['name']
+        node = api.read_node(name=name)
+
+        conditions_list = []
+        for condition in node.status.conditions:
+            conditions_list.append(
+                dict(
+                    last_heartbeat_time=condition.last_heartbeat_time,
+                    last_transition_time=condition.last_transition_time,
+                    message=condition.message,
+                    reason=condition.reason,
+                    status=condition.status,
+                    type=condition.type
+                )
+            )
+        images_list = []
+        if node.status.images:
+            for image in node.status.images:
+                images_list.append(
+                    dict(
+                        names=image.names,
+                        size_bytes=image.size_bytes
+                    )
+                )
+        else:
+            images_list = []
+        addresses_list = []
+        for address in node.status.addresses:
+            addresses_list.append(
+                dict(
+                    address=address.address,
+                    type=address.type
+                )
+            )
+        taints_list = []
+        if node.spec.taints:
+            for taint in node.spec.taints:
+                taints_list.append(
+                    dict(
+                        effect=taint.effect,
+                        key=taint.key,
+                        time_added=taint.time_added,
+                        value=taint.value
+                    )
+                )
+        else:
+            taints_list = []
+        node = dict(
+            name=node.metadata.name,
+            podCidr=node.spec.pod_cidr,
+            capacity=node.status.capacity,
+            allocatable=node.status.allocatable,
+            labels=node.metadata.labels,
+            annotations=node.metadata.annotations,
+            creationTimestamp=datetime.strftime(node.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+            nodeInfo=dict(
+                architecture=node.status.node_info.architecture,
+                boot_id=node.status.node_info.boot_id,
+                container_runtime_version=node.status.node_info.container_runtime_version,
+                kernel_version=node.status.node_info.kernel_version,
+                kubelet_version=node.status.node_info.kubelet_version,
+                machine_id=node.status.node_info.machine_id,
+                operating_system=node.status.node_info.operating_system,
+                os_image=node.status.node_info.os_image,
+                system_uuid=node.status.node_info.system_uuid
+            ),
+            role=node.metadata.labels['kubernetes.io/role'],
+            kubelet_version=node.status.node_info.kubelet_version,
+            conditions=conditions_list,
+            status=conditions_list[-1]['type'] if conditions_list[-1]['status'] == 'True' else 'NotReady',
+            images=images_list,
+            addresses=addresses_list,
+            taints=taints_list,
+            unschedulable=node.spec.unschedulable,
+            daemonEndpoints=dict(
+                kubelet_endpoint=dict(port=node.status.daemon_endpoints.kubelet_endpoint.port),
+            )
+        )
+        data = {
+            'code': 20000,
+            'data': node
         }
         return Response(data=data)
 
@@ -111,7 +141,7 @@ class NamespaceList(APIView):
             namespaces_list.append(
                 dict(
                     name=namespace.metadata.name,
-                    creationTimestamp=namespace.metadata.creation_timestamp,
+                    creationTimestamp=datetime.strftime(namespace.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
                     status=namespace.status.phase
                 )
             )
@@ -142,20 +172,171 @@ class PodList(APIView):
                     namespace=pod.metadata.namespace,
                     labels=pod.metadata.labels,
                     creationTimestamp=datetime.strftime(pod.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
-                    hostname=pod.spec.hostname,
                     nodename=pod.spec.node_name,
-                    dnsPolicy=pod.spec.dns_policy,
-                    restartPolicy=pod.spec.restart_policy,
-                    # serviceAccount=pod.spec.serviceAccount,
-                    # volumes=json.pod.spec.volumes,
                     hostIP=pod.status.host_ip,
                     podIP=pod.status.pod_ip,
-                    startTime=pod.status.start_time
+                    startTime=datetime.strftime(pod.status.start_time, '%Y-%m-%d %H:%M')
                 )
             )
         data = {
             'code': 20000,
             'data': pods_list
+        }
+        return Response(data=data)
+
+
+class PodInfo(APIView):
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.CoreV1Api()
+        name = request.query_params['name']
+        namespace = request.query_params['namespace']
+        pod = api.read_namespaced_pod(name=name, namespace=namespace)
+        containers_list = []
+        for container in pod.spec.containers:
+            envs_list = []
+            if container.env:
+                for env in container.env:
+                    envs_list.append(
+                        dict(
+                            name=env.name,
+                            value=env.value
+                        )
+                    )
+            else:
+                envs_list = []
+            ports_list = []
+            if container.ports:
+                for port in container.ports:
+                    ports_list.append(
+                        dict(
+                            container_port=port.container_port,
+                            protocol=port.protocol
+                        )
+                    )
+            else:
+                ports_list = []
+            volume_mounts_list = []
+            if container.volume_mounts:
+                for mount in container.volume_mounts:
+                    volume_mounts_list.append(
+                        dict(
+                            mount_path=mount.mount_path,
+                            name=mount.name
+                        )
+                    )
+            else:
+                volume_mounts_list = []
+            containers_list.append(
+                dict(
+                    name=container.name,
+                    command=container.command,
+                    args=container.args,
+                    env=envs_list,
+                    image=container.image,
+                    image_pull_policy=container.image_pull_policy,
+                    resources=dict(
+                        limits=container.resources.limits,
+                        requests=container.resources.requests
+                    ),
+                    volume_mounts=volume_mounts_list,
+                    ports=ports_list
+                )
+            )
+        volumes_list = []
+        if pod.spec.volumes:
+            for volume in pod.spec.volumes:
+                volumes_list.append(
+                    dict(
+                        name=volume.name,
+                        empty_dir=volume.empty_dir,
+                        csi=volume.csi,
+                        config_map=volume.config_map,
+                        host_path=volume.host_path,
+                        nfs=volume.nfs,
+                        persistent_volume_claim=volume.persistent_volume_claim,
+                    )
+                )
+        else:
+            volumes_list = []
+        conditions_list = []
+        if pod.status.conditions:
+            for condition in pod.status.conditions:
+                conditions_list.append(
+                    dict(
+                        last_probe_time=condition.last_probe_time,
+                        last_transition_time=datetime.strftime(condition.last_transition_time, '%Y-%m-%d %H:%M'),
+                        message=condition.message,
+                        status=condition.status,
+                        type=condition.type
+                    )
+                )
+        else:
+            conditions_list = []
+        container_statuses_list = []
+        if pod.status.container_statuses:
+            for container_status in pod.status.container_statuses:
+                container_statuses_list.append(
+                    dict(
+                        name=container_status.name,
+                        ready=container_status.ready,
+                        restart_count=container_status.restart_count,
+                        started=container_status.started,
+                        container_id=container_status.container_id,
+                        image=container_status.image,
+                        # last_state=dict(
+                        #     running=container_status.last_state.running,
+                        #     terminated=dict(
+                        #         exit_code=container_status.last_state.terminated.exit_code,
+                        #         finished_at=container_status.last_state.terminated.finished_at,
+                        #         message=container_status.last_state.terminated.message,
+                        #         reason=container_status.last_state.terminated.reason,
+                        #         started_at=container_status.last_state.terminated.started_at
+                        #     ),
+                        #     waiting=container_status.last_state.waiting
+                        # ),
+                        # state=dict(
+                        #     running=container_status.state.running,
+                        #     terminated=container_status.state.terminated,
+                        #     waiting=container_status.state.waiting
+                        # )
+                    )
+                )
+        owner_references_list = []
+        for owner_reference in pod.metadata.owner_references:
+            owner_references_list.append(
+                dict(
+                    api_version=owner_reference.api_version,
+                    block_owner_deletion=owner_reference.block_owner_deletion,
+                    controller=owner_reference.controller,
+                    kind=owner_reference.kind,
+                    name=owner_reference.name
+                )
+            )
+
+        pod = dict(
+            name=pod.metadata.name,
+            namespace=pod.metadata.namespace,
+            labels=pod.metadata.labels,
+            ownerReferences=owner_references_list,
+            creationTimestamp=datetime.strftime(pod.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+            hostname=pod.spec.hostname,
+            nodename=pod.spec.node_name,
+            dnsPolicy=pod.spec.dns_policy,
+            restartPolicy=pod.spec.restart_policy,
+            containers=containers_list,
+            # serviceAccount=pod.spec.serviceAccount,
+            volumes=volumes_list,
+            hostIP=pod.status.host_ip,
+            podIP=pod.status.pod_ip,
+            startTime=datetime.strftime(pod.status.start_time, '%Y-%m-%d %H:%M'),
+            conditions=conditions_list,
+            container_statuses=container_statuses_list
+        )
+        data = {
+            'code': 20000,
+            'data': pod
         }
         return Response(data=data)
 
@@ -174,59 +355,6 @@ class DeploymentList(APIView):
             deployments = api.list_namespaced_deployment(namespace=query_ns).items
         logger.info(f"Getting deployments Total: {len(deployments)} deployments")
         for deployment in deployments:
-            containers_list = []
-            for container in deployment.spec.template.spec.containers:
-                envs_list = []
-                if container.env:
-                    for env in container.env:
-                        envs_list.append(
-                            dict(
-                                name=env.name,
-                                value=env.value
-                            )
-                        )
-                else:
-                    envs_list = []
-                ports_list = []
-                if container.ports:
-                    for port in container.ports:
-                        ports_list.append(
-                            dict(
-                                container_port=port.container_port,
-                                protocol=port.protocol
-                            )
-                        )
-                else:
-                    ports_list = []
-                volume_mounts_list = []
-                if container.volume_mounts:
-                    for mount in container.volume_mounts:
-                        volume_mounts_list.append(
-                            dict(
-                                mount_path=mount.mount_path,
-                                name=mount.name
-                            )
-                        )
-                else:
-                    volume_mounts_list = []
-
-                containers_list.append(
-                    dict(
-                        name=container.name,
-                        image=container.image,
-                        env=envs_list,
-                        image_pull_policy=container.image_pull_policy,
-                        # liveness_probe=dict(
-                        #     container.liveness_probe
-                        # ),
-                        resources=dict(
-                            limits=container.resources.limits,
-                            requests=container.resources.requests
-                        ),
-                        volume_mounts=volume_mounts_list,
-                        ports=ports_list
-                    )
-                )
             conditions_list = []
             for condition in deployment.status.conditions:
                 conditions_list.append(
@@ -243,28 +371,123 @@ class DeploymentList(APIView):
                 dict(
                     name=deployment.metadata.name,
                     namespace=deployment.metadata.namespace,
-                    selector=dict(
-                        matchExpressions=deployment.spec.selector.match_expressions,
-                        matchLabels=deployment.spec.selector.match_labels,
-                    ),
                     labels=deployment.metadata.labels,
                     creationTimestamp=datetime.strftime(deployment.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
-                    # serviceAccount=pod.spec.serviceAccount,
-                    # volumes=json.pod.spec.volumes,
-                    containers=containers_list,
-                    status=dict(
-                        available_replicas=deployment.status.available_replicas,
-                        conditions=conditions_list,
-                        ready_replicas=deployment.status.ready_replicas,
-                        replicas=deployment.status.replicas,
-                        unavailable_replicas=deployment.status.unavailable_replicas,
-                        updated_replicas=deployment.status.updated_replicas
-                    )
+                    # status=dict(
+                    #     available_replicas=deployment.status.available_replicas,
+                    #     conditions=conditions_list,
+                    #     ready_replicas=deployment.status.ready_replicas,
+                    #     replicas=deployment.status.replicas,
+                    #     unavailable_replicas=deployment.status.unavailable_replicas,
+                    #     updated_replicas=deployment.status.updated_replicas
+                    # )
+                    status=f"{deployment.status.ready_replicas}/{deployment.status.replicas}"
                 )
             )
         data = {
             'code': 20000,
             'data': deployments_list
+        }
+        return Response(data=data)
+
+
+class DeploymentInfo(APIView):
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.AppsV1Api()
+        name = request.query_params['name']
+        namespace = request.query_params['name']
+        deployment = api.read_namespaced_deployment(name=name, namespace=namespace)
+        containers_list = []
+        for container in deployment.spec.template.spec.containers:
+            envs_list = []
+            if container.env:
+                for env in container.env:
+                    envs_list.append(
+                        dict(
+                            name=env.name,
+                            value=env.value
+                        )
+                    )
+            else:
+                envs_list = []
+            ports_list = []
+            if container.ports:
+                for port in container.ports:
+                    ports_list.append(
+                        dict(
+                            container_port=port.container_port,
+                            protocol=port.protocol
+                        )
+                    )
+            else:
+                ports_list = []
+            volume_mounts_list = []
+            if container.volume_mounts:
+                for mount in container.volume_mounts:
+                    volume_mounts_list.append(
+                        dict(
+                            mount_path=mount.mount_path,
+                            name=mount.name
+                        )
+                    )
+            else:
+                volume_mounts_list = []
+
+            containers_list.append(
+                dict(
+                    name=container.name,
+                    image=container.image,
+                    env=envs_list,
+                    image_pull_policy=container.image_pull_policy,
+                    # liveness_probe=dict(
+                    #     container.liveness_probe
+                    # ),
+                    resources=dict(
+                        limits=container.resources.limits,
+                        requests=container.resources.requests
+                    ),
+                    volume_mounts=volume_mounts_list,
+                    ports=ports_list
+                )
+            )
+        conditions_list = []
+        for condition in deployment.status.conditions:
+            conditions_list.append(
+                dict(
+                    last_transition_time=condition.last_transition_time,
+                    last_update_time=condition.last_update_time,
+                    message=condition.message,
+                    reason=condition.reason,
+                    status=condition.status,
+                    type=condition.type
+                )
+            )
+        deployment = dict(
+            name=deployment.metadata.name,
+            namespace=deployment.metadata.namespace,
+            selector=dict(
+                matchExpressions=deployment.spec.selector.match_expressions,
+                matchLabels=deployment.spec.selector.match_labels,
+            ),
+            labels=deployment.metadata.labels,
+            creationTimestamp=datetime.strftime(deployment.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+            # serviceAccount=pod.spec.serviceAccount,
+            # volumes=json.pod.spec.volumes,
+            containers=containers_list,
+            status=dict(
+                available_replicas=deployment.status.available_replicas,
+                conditions=conditions_list,
+                ready_replicas=deployment.status.ready_replicas,
+                replicas=deployment.status.replicas,
+                unavailable_replicas=deployment.status.unavailable_replicas,
+                updated_replicas=deployment.status.updated_replicas
+            )
+        )
+        data = {
+            'code': 20000,
+            'data': deployment
         }
         return Response(data=data)
 
@@ -365,6 +588,10 @@ class DaemonsetList(APIView):
         return Response(data=data)
 
 
+class DaemonsetInfo(APIView):
+    pass
+
+
 class ReplicasetList(APIView):
     @staticmethod
     def get(request, *args, **kwargs):
@@ -454,6 +681,10 @@ class ReplicasetList(APIView):
             'data': replicasets_list
         }
         return Response(data=data)
+
+
+class ReplicasetInfo(APIView):
+    pass
 
 
 class StatefulsetList(APIView):
@@ -547,6 +778,10 @@ class StatefulsetList(APIView):
         return Response(data=data)
 
 
+class StatefulsetInfo(APIView):
+    pass
+
+
 class ServiceList(APIView):
     @staticmethod
     def get(request, *args, **kwargs):
@@ -592,3 +827,7 @@ class ServiceList(APIView):
             'data': services_list
         }
         return Response(data=data)
+
+
+class ServiceInfo(APIView):
+    pass
