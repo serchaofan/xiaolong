@@ -23,11 +23,17 @@ class NodeList(APIView):
                         type=condition.type
                     )
                 )
+            if 'kubernetes.io/role' not in node.metadata.labels.keys():
+                role = "Unknown"
+            elif 'node-role.kubernetes.io/master' in node.metadata.labels.keys() and node.metadata.labels['node-role.kubernetes.io/master'] == "":
+                role = "Master"
+            else:
+                role = node.metadata.labels['kubernetes.io/role']
             nodes_list.append(dict(
                 name=node.metadata.name,
                 labels=node.metadata.labels,
                 creationTimestamp=datetime.strftime(node.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
-                role=node.metadata.labels['kubernetes.io/role'],
+                role=role,
                 status=conditions_list[-1]['type'] if conditions_list[-1]['status'] == 'True' else 'NotReady',
                 kubelet_version=node.status.node_info.kubelet_version,
                 unschedulable=node.spec.unschedulable,
@@ -578,7 +584,8 @@ class DaemonsetList(APIView):
                         number_ready=daemonset.status.number_ready,
                         number_unavailable=daemonset.status.number_unavailable,
                         updated_number_scheduled=daemonset.status.updated_number_scheduled,
-                    )
+                    ),
+                    # status = f"{daemonset.status.number_ready}/{daemonset.status.replicas}"
                 )
             )
         data = {
@@ -668,12 +675,13 @@ class ReplicasetList(APIView):
                     labels=replicaset.metadata.labels,
                     creationTimestamp=datetime.strftime(replicaset.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
                     containers=containers_list,
-                    status=dict(
-                        available_replicas=replicaset.status.available_replicas,
-                        fully_labeled_replicas=replicaset.status.fully_labeled_replicas,
-                        ready_replicas=replicaset.status.ready_replicas,
-                        replicas=replicaset.status.replicas,
-                    )
+                    # status=dict(
+                    #     available_replicas=replicaset.status.available_replicas,
+                    #     fully_labeled_replicas=replicaset.status.fully_labeled_replicas,
+                    #     ready_replicas=replicaset.status.ready_replicas,
+                    #     replicas=replicaset.status.replicas,
+                    # ),
+                    status=f"{replicaset.status.ready_replicas}/{replicaset.status.replicas}" if replicaset.status.ready_replicas else "NULL"
                 )
             )
         data = {
@@ -763,12 +771,13 @@ class StatefulsetList(APIView):
                     labels=statefulset.metadata.labels,
                     creationTimestamp=datetime.strftime(statefulset.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
                     containers=containers_list,
-                    status=dict(
-                        collision_count=statefulset.status.collision_count,
-                        current_replicas=statefulset.status.current_replicas,
-                        replicas=statefulset.status.replicas,
-                        updated_replicas=statefulset.status.updated_replicas,
-                    )
+                    # status=dict(
+                    #     collision_count=statefulset.status.collision_count,
+                    #     current_replicas=statefulset.status.current_replicas,
+                    #     replicas=statefulset.status.replicas,
+                    #     updated_replicas=statefulset.status.updated_replicas,
+                    # ),
+                    status=f"{statefulset.status.current_replicas}/{statefulset.status.replicas}"
                 )
             )
         data = {
