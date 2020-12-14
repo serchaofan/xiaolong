@@ -840,3 +840,232 @@ class ServiceList(APIView):
 
 class ServiceInfo(APIView):
     pass
+
+
+class IngressList(APIView):
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.ExtensionsV1beta1Api()
+        ingresses_list = []
+        if 'namespace' not in request.query_params.dict():
+            logger.info("No namespace Param, Getting All services")
+            ingresses = api.list_ingress_for_all_namespaces().items
+        else:
+            query_ns = request.query_params['namespace']
+            ingresses = api.list_namespaced_ingress(namespace=query_ns).items
+        logger.info(f"Getting ingresses Total: {len(ingresses)} ingresses")
+        for ingress in ingresses:
+            ingresses_list.append(
+                dict(
+                    name=ingress.metadata.name,
+                    namespace=ingress.metadata.namespace,
+                    labels=ingress.metadata.labels,
+                    creationTimestamp=datetime.strftime(ingress.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+                )
+            )
+        data = {
+            'code': 20000,
+            'data': ingresses_list
+        }
+        return Response(data=data)
+
+
+class CronjobList(APIView):
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.BatchV1beta1Api()
+        cronjobs_list = []
+        if 'namespace' not in request.query_params.dict():
+            logger.info("No namespace Param, Getting All services")
+            cronjobs = api.list_cron_job_for_all_namespaces().items
+        else:
+            query_ns = request.query_params['namespace']
+            cronjobs = api.list_namespaced_cron_job(namespace=query_ns).items
+        logger.info(f"Getting cronjobs Total: {len(cronjobs)} cronjobs")
+        for cronjob in cronjobs:
+            cronjobs_list.append(
+                dict(
+                    name=cronjob.metadata.name,
+                    namespace=cronjob.metadata.namespace,
+                    labels=cronjob.metadata.labels,
+                    creationTimestamp=datetime.strftime(cronjob.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+                    selector=cronjob.spec.selector,
+                )
+            )
+        data = {
+            'code': 20000,
+            'data': cronjobs_list
+        }
+        return Response(data=data)
+
+
+class JobList(APIView):
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.BatchV1Api()
+        jobs_list = []
+        if 'namespace' not in request.query_params.dict():
+            logger.info("No namespace Param, Getting All services")
+            jobs = api.list_job_for_all_namespaces().items
+        else:
+            query_ns = request.query_params['namespace']
+            jobs = api.list_namespaced_job(namespace=query_ns).items
+        logger.info(f"Getting jobs Total: {len(jobs)} jobs")
+        for job in jobs:
+            jobs_list.append(
+                dict(
+                    name=job.metadata.name,
+                    namespace=job.metadata.namespace,
+                    labels=job.metadata.labels,
+                    creationTimestamp=datetime.strftime(job.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+                    selector=job.spec.selector,
+                )
+            )
+        data = {
+            'code': 20000,
+            'data': jobs_list
+        }
+        return Response(data=data)
+
+
+class NetworkPolicyList(APIView):
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.ExtensionsV1beta1Api()
+        networkpolicies_list = []
+        if 'namespace' not in request.query_params.dict():
+            logger.info("No namespace Param, Getting All services")
+            networkpolicies = api.list_network_policy_for_all_namespaces().items
+        else:
+            query_ns = request.query_params['namespace']
+            networkpolicies = api.list_namespaced_network_policy(namespace=query_ns).items
+        logger.info(f"Getting networkpolicies Total: {len(networkpolicies)} networkpolicies")
+        for networkpolicy in networkpolicies:
+            networkpolicies_list.append(
+                dict(
+                    name=networkpolicy.metadata.name,
+                    namespace=networkpolicy.metadata.namespace,
+                    labels=networkpolicy.metadata.labels,
+                    creationTimestamp=datetime.strftime(networkpolicy.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+                    selector=networkpolicy.spec.selector,
+                )
+            )
+        data = {
+            'code': 20000,
+            'data': networkpolicies_list
+        }
+        return Response(data=data)
+
+
+class ConfigMapList(APIView):
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.CoreV1Api()
+        configmaps_list = []
+        if 'namespace' not in request.query_params.dict():
+            logger.info("No namespace Param, Getting All services")
+            configmaps = api.list_config_map_for_all_namespaces().items
+        else:
+            query_ns = request.query_params['namespace']
+            configmaps = api.list_namespaced_config_map(namespace=query_ns).items
+        logger.info(f"Getting configmaps Total: {len(configmaps)} configmaps")
+        for configmap in configmaps:
+            configmaps_list.append(
+                dict(
+                    name=configmap.metadata.name,
+                    namespace=configmap.metadata.namespace,
+                    labels=configmap.metadata.labels,
+                    creationTimestamp=datetime.strftime(configmap.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+                )
+            )
+        data = {
+            'code': 20000,
+            'data': configmaps_list
+        }
+        return Response(data=data)
+
+
+class SecretList(APIView):
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.CoreV1Api()
+        secrets_list = []
+        if 'namespace' not in request.query_params.dict():
+            logger.info("No namespace Param, Getting All services")
+            secrets = api.list_secret_for_all_namespaces().items
+        else:
+            query_ns = request.query_params['namespace']
+            secrets = api.list_namespaced_secret(namespace=query_ns).items
+        logger.info(f"Getting secrets Total: {len(secrets)} secrets")
+        for secret in secrets:
+            secrets_list.append(
+                dict(
+                    name=secret.metadata.name,
+                    namespace=secret.metadata.namespace,
+                    labels=secret.metadata.labels,
+                    creationTimestamp=datetime.strftime(secret.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+                )
+            )
+        data = {
+            'code': 20000,
+            'data': secrets_list
+        }
+        return Response(data=data)
+
+
+class PVList(APIView):
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.CoreV1Api()
+        pvs_list = []
+        pvs = api.list_persistent_volume().items
+        logger.info(f"Getting pvs Total: {len(pvs)} pvs")
+        for pv in pvs:
+            pvs_list.append(
+                dict(
+                    name=pv.metadata.name,
+                    namespace=pv.metadata.namespace,
+                    labels=pv.metadata.labels,
+                    creationTimestamp=datetime.strftime(pv.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+                )
+            )
+        data = {
+            'code': 20000,
+            'data': pvs_list
+        }
+        return Response(data=data)
+
+
+class PVCList(APIView):
+    pass
+
+
+class ServiceAccountList(APIView):
+    pass
+
+
+class RoleList(APIView):
+    pass
+
+
+class RoleBindingList(APIView):
+    pass
+
+
+class ClusterRoleList(APIView):
+    pass
+
+
+class ClusterRoleBindingList(APIView):
+    pass
+
+
+class EventList(APIView):
+    pass

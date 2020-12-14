@@ -37,6 +37,13 @@ urlpatterns = [
     url(r'^api/replicasets$', k8s_views.ReplicasetList.as_view()),
     url(r'^api/statefulsets$', k8s_views.StatefulsetList.as_view()),
     url(r'^api/services$', k8s_views.ServiceList.as_view()),
+    url(r'^api/ingresses$', k8s_views.IngressList.as_view()),
+    url(r'^api/cronjobs$', k8s_views.CronjobList.as_view()),
+    url(r'^api/jobs$', k8s_views.JobList.as_view()),
+    url(r'^api/pvs$', k8s_views.PVList.as_view()),
+    url(r'^api/configmaps$', k8s_views.ConfigMapList.as_view()),
+    url(r'^api/secrets$', k8s_views.SecretList.as_view()),
+
 
     url(r'^api/node', k8s_views.NodeInfo.as_view()),
     url(r'^api/pod', k8s_views.PodInfo.as_view()),
