@@ -52,6 +52,7 @@ class NodeInfo(APIView):
         config.load_kube_config()
         api = client.CoreV1Api()
         name = request.query_params['name']
+        logger.info(name)
         node = api.read_node(name=name)
 
         conditions_list = []
@@ -71,8 +72,8 @@ class NodeInfo(APIView):
             for image in node.status.images:
                 images_list.append(
                     dict(
-                        names=image.names,
-                        size_bytes=image.size_bytes
+                        names=image.names[-1],
+                        size_bytes=round(image.size_bytes/1000/1000, 1)
                     )
                 )
         else:
@@ -117,7 +118,7 @@ class NodeInfo(APIView):
                 os_image=node.status.node_info.os_image,
                 system_uuid=node.status.node_info.system_uuid
             ),
-            role=node.metadata.labels['kubernetes.io/role'],
+            # role=node.metadata.labels['kubernetes.io/role'],
             kubelet_version=node.status.node_info.kubelet_version,
             conditions=conditions_list,
             status=conditions_list[-1]['type'] if conditions_list[-1]['status'] == 'True' else 'NotReady',

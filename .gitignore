@@ -142,6 +142,7 @@ cython_debug/
 
 .idea/
 *.pyc
+.idea/dictionaries/
 .idea/.gitignore
 .idea/deployment.xml
 .idea/inspectionProfiles/

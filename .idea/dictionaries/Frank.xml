@@ -1,6 +1,8 @@
 <component name="ProjectDictionaryState">
   <dictionary name="Frank">
     <words>
+      <w>configmap</w>
+      <w>configmaps</w>
       <w>cronjob</w>
       <w>cronjobs</w>
       <w>daemonset</w>
