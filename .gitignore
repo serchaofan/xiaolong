@@ -4,10 +4,10 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+*/__pycache__
 # C extensions
 *.so
-
+*/migrations
 # Distribution / packaging
 .Python
 build/
@@ -152,3 +152,5 @@ cython_debug/
 .idea/webResources.xml
 .idea/xiaolong.iml
 k8s/urls.py
+!/k8s/migrations/
+!/.idea/

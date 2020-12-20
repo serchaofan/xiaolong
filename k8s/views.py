@@ -404,7 +404,7 @@ class DeploymentInfo(APIView):
         config.load_kube_config()
         api = client.AppsV1Api()
         name = request.query_params['name']
-        namespace = request.query_params['name']
+        namespace = request.query_params['namespace']
         deployment = api.read_namespaced_deployment(name=name, namespace=namespace)
         containers_list = []
         for container in deployment.spec.template.spec.containers:
@@ -840,7 +840,42 @@ class ServiceList(APIView):
 
 
 class ServiceInfo(APIView):
-    pass
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.CoreV1Api()
+        name = request.query_params['name']
+        namespace = request.query_params['namespace']
+        service = api.read_namespaced_service(name=name, namespace=namespace)
+        service = dict(
+            name=service.metadata.name,
+            namespace=service.metadata.namespace,
+            labels=service.metadata.labels,
+            creationTimestamp=datetime.strftime(service.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+            clusterIP=service.spec.cluster_ip,
+            externalTrafficPolicy=service.spec.external_traffic_policy,
+            ports=[
+                dict(
+                    name=port.name,
+                    node_port=port.node_port,
+                    port=port.port,
+                    protocol=port.protocol,
+                    target_port=port.target_port
+                ) for port in service.spec.ports
+            ],
+            selector=service.spec.selector,
+            type=service.spec.type,
+            status=dict(
+                load_balancer=dict(
+                    ingress=service.status.load_balancer.ingress
+                )
+            )
+        )
+        data = {
+            'code': 20000,
+            'data': service
+        }
+        return Response(data=data)
 
 
 class IngressList(APIView):
@@ -1011,11 +1046,35 @@ class SecretList(APIView):
                     namespace=secret.metadata.namespace,
                     labels=secret.metadata.labels,
                     creationTimestamp=datetime.strftime(secret.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+                    type=secret.type
                 )
             )
         data = {
             'code': 20000,
             'data': secrets_list
+        }
+        return Response(data=data)
+
+
+class SecretInfo(APIView):
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.CoreV1Api()
+        name = request.query_params['name']
+        namespace = request.query_params['namespace']
+        secret = api.read_namespaced_secret(name=name, namespace=namespace)
+        secret = dict(
+            name=secret.metadata.name,
+            namespace=secret.metadata.namespace,
+            labels=secret.metadata.labels,
+            creationTimestamp=datetime.strftime(secret.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+            type=secret.type,
+            data=secret.data
+        )
+        data = {
+            'code': 20000,
+            'data': secret
         }
         return Response(data=data)
 
@@ -1053,20 +1112,303 @@ class ServiceAccountList(APIView):
 
 
 class RoleList(APIView):
-    pass
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.RbacAuthorizationV1Api()
+        if 'namespace' not in request.query_params.dict():
+            logger.info("No namespace Param, Getting All roles")
+            roles = api.list_role_for_all_namespaces().items
+        else:
+            query_ns = request.query_params['namespace']
+            roles = api.list_namespaced_role(namespace=query_ns).items
+        logger.info(f"Getting roles Total: {len(roles)} roles")
+        roles_list = []
+        for role in roles:
+            roles_list.append(
+                dict(
+                    name=role.metadata.name,
+                    namespace=role.metadata.namespace,
+                    labels=role.metadata.labels,
+                    creationTimestamp=datetime.strftime(role.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+                )
+            )
+        data = {
+            'code': 20000,
+            'data': roles_list
+        }
+        return Response(data=data)
+
+
+class RoleInfo(APIView):
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.RbacAuthorizationV1Api()
+        name = request.query_params['name']
+        namespace = request.query_params['namespace']
+        role = api.read_namespaced_role(name=name, namespace=namespace)
+        role = dict(
+            name=role.metadata.name,
+            namespace=role.metadata.namespace,
+            labels=role.metadata.labels,
+            creationTimestamp=datetime.strftime(role.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+            rules=[
+                dict(
+                    api_groups=rule.api_groups,
+                    non_resource_ur_ls=rule.non_resource_ur_ls,
+                    resource_names=rule.resource_names,
+                    resources=rule.resources,
+                    verbs=rule.verbs
+                ) for rule in role.rules
+            ]
+        )
+        data = {
+            'code': 20000,
+            'data': role
+        }
+        return Response(data=data)
 
 
 class RoleBindingList(APIView):
-    pass
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.RbacAuthorizationV1Api()
+        if 'namespace' not in request.query_params.dict():
+            logger.info("No namespace Param, Getting All rolebindings")
+            rolebindings = api.list_role_binding_for_all_namespaces().items
+        else:
+            query_ns = request.query_params['namespace']
+            rolebindings = api.list_namespaced_role(namespace=query_ns).items
+        logger.info(f"Getting rolebindings Total: {len(rolebindings)} rolebindings")
+        rolebindings_list = []
+        for rolebinding in rolebindings:
+            rolebindings_list.append(
+                dict(
+                    name=rolebinding.metadata.name,
+                    namespace=rolebinding.metadata.namespace,
+                    labels=rolebinding.metadata.labels,
+                    creationTimestamp=datetime.strftime(rolebinding.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+                )
+            )
+        data = {
+            'code': 20000,
+            'data': rolebindings_list
+        }
+        return Response(data=data)
+
+
+class RoleBindingInfo(APIView):
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.RbacAuthorizationV1Api()
+        name = request.query_params['name']
+        namespace = request.query_params['namespace']
+        rolebinding = api.read_namespaced_role_binding(name=name, namespace=namespace)
+        rolebinding = dict(
+            name=rolebinding.metadata.name,
+            namespace=rolebinding.metadata.namespace,
+            labels=rolebinding.metadata.labels,
+            creationTimestamp=datetime.strftime(rolebinding.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+            role_ref=dict(
+                api_group=rolebinding.role_ref.api_group,
+                kind=rolebinding.role_ref.kind,
+                name=rolebinding.role_ref.name
+            ),
+            subjects=[
+                dict(
+                    api_group=subject.api_group,
+                    kind=subject.kind,
+                    name=subject.name,
+                    namespace=subject.namespace
+                ) for subject in rolebinding.subjects
+            ]
+        )
+        data = {
+            'code': 20000,
+            'data': rolebinding
+        }
+        return Response(data=data)
 
 
 class ClusterRoleList(APIView):
-    pass
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.RbacAuthorizationV1Api()
+        clusterroles = api.list_cluster_role().items
+        logger.info(f"Getting clusterroles Total: {len(clusterroles)} clusterroles")
+        clusterroles_list = []
+        for clusterrole in clusterroles:
+            clusterroles_list.append(
+                dict(
+                    name=clusterrole.metadata.name,
+                    namespace=clusterrole.metadata.namespace,
+                    labels=clusterrole.metadata.labels,
+                    creationTimestamp=datetime.strftime(clusterrole.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+                )
+            )
+        data = {
+            'code': 20000,
+            'data': clusterroles_list
+        }
+        return Response(data=data)
+
+
+class ClusterRoleInfo(APIView):
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.RbacAuthorizationV1Api()
+        name = request.query_params['name']
+        role = api.read_cluster_role(name=name)
+        role = dict(
+            name=role.metadata.name,
+            namespace=role.metadata.namespace,
+            labels=role.metadata.labels,
+            creationTimestamp=datetime.strftime(role.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+            rules=[
+                dict(
+                    api_groups=rule.api_groups,
+                    non_resource_ur_ls=rule.non_resource_ur_ls,
+                    resource_names=rule.resource_names,
+                    resources=rule.resources,
+                    verbs=rule.verbs
+                ) for rule in role.rules
+            ]
+        )
+        data = {
+            'code': 20000,
+            'data': role
+        }
+        return Response(data=data)
 
 
 class ClusterRoleBindingList(APIView):
-    pass
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.RbacAuthorizationV1Api()
+        clusterrolebindings = api.list_cluster_role_binding().items
+        logger.info(f"Getting rolebindings Total: {len(clusterrolebindings)} rolebindings")
+        clusterrolebindings_list = []
+        for clusterrolebinding in clusterrolebindings:
+            clusterrolebindings_list.append(
+                dict(
+                    name=clusterrolebinding.metadata.name,
+                    namespace=clusterrolebinding.metadata.namespace,
+                    labels=clusterrolebinding.metadata.labels,
+                    creationTimestamp=datetime.strftime(clusterrolebinding.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+                )
+            )
+        data = {
+            'code': 20000,
+            'data': clusterrolebindings_list
+        }
+        return Response(data=data)
+
+
+class ClusterRoleBindingInfo(APIView):
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.RbacAuthorizationV1Api()
+        name = request.query_params['name']
+        clusterrolebinding = api.read_cluster_role_binding(name=name)
+        clusterrolebinding = dict(
+            name=clusterrolebinding.metadata.name,
+            namespace=clusterrolebinding.metadata.namespace,
+            labels=clusterrolebinding.metadata.labels,
+            creationTimestamp=datetime.strftime(clusterrolebinding.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+            role_ref=dict(
+                api_group=clusterrolebinding.role_ref.api_group,
+                kind=clusterrolebinding.role_ref.kind,
+                name=clusterrolebinding.role_ref.name
+            ),
+            subjects=[
+                dict(
+                    api_group=subject.api_group,
+                    kind=subject.kind,
+                    name=subject.name,
+                    namespace=subject.namespace
+                ) for subject in clusterrolebinding.subjects
+            ]
+        )
+        data = {
+            'code': 20000,
+            'data': clusterrolebinding
+        }
+        return Response(data=data)
 
 
 class EventList(APIView):
-    pass
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.CoreV1Api()
+        events_list = []
+        if 'namespace' not in request.query_params.dict():
+            logger.info("No namespace Param, Getting All events")
+            events = api.list_event_for_all_namespaces().items
+        else:
+            query_ns = request.query_params['namespace']
+            events = api.list_namespaced_event(namespace=query_ns).items
+        logger.info(f"Getting events Total: {len(events)} events")
+        for event in events:
+            events_list.append(
+                dict(
+                    name=event.metadata.name,
+                    namespace=event.metadata.namespace,
+                    labels=event.metadata.labels,
+                    lastTimestamp=datetime.strftime(event.last_timestamp, '%Y-%m-%d %H:%M'),
+                    message=event.message,
+                    reason=event.reason,
+                    source=dict(
+                        component=event.source.component,
+                        host=event.source.host
+                    ),
+                    type=event.type
+                )
+            )
+        data = {
+            'code': 20000,
+            'data': events_list
+        }
+        return Response(data=data)
+
+
+class EventInfo(APIView):
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.CoreV1Api()
+        name = request.query_params['name']
+        namespace = request.query_params['namespace']
+        event = api.read_namespaced_event(name=name, namespace=namespace)
+        event = dict(
+            name=event.metadata.name,
+            namespace=event.metadata.namespace,
+            labels=event.metadata.labels,
+            lastTimestamp=datetime.strftime(event.last_timestamp, '%Y-%m-%d %H:%M'),
+            firstTimestamp=datetime.strftime(event.first_timestamp, '%Y-%m-%d %H:%M'),
+            creationTimestamp=datetime.strftime(event.creation_timestamp, '%Y-%m-%d %H:%M'),
+            message=event.message,
+            source=dict(
+                component=event.source.component,
+                host=event.source.host
+            ),
+            type=event.type,
+            involved_object=dict(
+                field_path=event.involved_object.field_path,
+                kind=event.involved_object,
+                name=event.involved_object,
+                namespace=event.involved_object,
+            )
+        )
+        data = {
+            'code': 20000,
+            'data': event
+        }
+        return Response(data=data)

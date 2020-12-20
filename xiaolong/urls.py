@@ -22,13 +22,13 @@ from rest_framework.routers import DefaultRouter
 import k8s.views as k8s_views
 
 router = DefaultRouter()
-
 urlpatterns = [
     url(r'^', include(router.urls)),
     url(r'^admin/', admin.site.urls),
     url(r'^docs/', include_docs_urls("文档")),
     url(r'^api-auth', include("rest_framework.urls", namespace="rest_framework")),
     # k8s
+    # list
     url(r'^api/namespaces$', k8s_views.NamespaceList.as_view()),
     url(r'^api/pods$', k8s_views.PodList.as_view()),
     url(r'^api/nodes$', k8s_views.NodeList.as_view()),
@@ -43,10 +43,21 @@ urlpatterns = [
     url(r'^api/pvs$', k8s_views.PVList.as_view()),
     url(r'^api/configmaps$', k8s_views.ConfigMapList.as_view()),
     url(r'^api/secrets$', k8s_views.SecretList.as_view()),
-
-
+    url(r'^api/roles$', k8s_views.RoleList.as_view()),
+    url(r'^api/role_bindings$', k8s_views.RoleBindingList.as_view()),
+    url(r'^api/cluster_roles$', k8s_views.ClusterRoleList.as_view()),
+    url(r'^api/cluster_role_bindings$', k8s_views.ClusterRoleBindingList.as_view()),
+    url(r'^api/events$', k8s_views.EventList.as_view()),
+    # info
     url(r'^api/node', k8s_views.NodeInfo.as_view()),
     url(r'^api/pod', k8s_views.PodInfo.as_view()),
+    url(r'^api/secret', k8s_views.SecretInfo.as_view()),
+    url(r'^api/role_binding', k8s_views.RoleBindingInfo.as_view()),
+    url(r'^api/role', k8s_views.RoleInfo.as_view()),
+    url(r'^api/cluster_role_binding', k8s_views.ClusterRoleBindingInfo.as_view()),
+    url(r'^api/cluster_role', k8s_views.ClusterRoleInfo.as_view()),
+    url(r'^api/event', k8s_views.EventInfo.as_view()),
 
 
 ]
+
