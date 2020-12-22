@@ -882,7 +882,7 @@ class IngressList(APIView):
     @staticmethod
     def get(request, *args, **kwargs):
         config.load_kube_config()
-        api = client.ExtensionsV1beta1Api()
+        api = client.NetworkingV1beta1Api()
         ingresses_list = []
         if 'namespace' not in request.query_params.dict():
             logger.info("No namespace Param, Getting All services")
@@ -903,6 +903,35 @@ class IngressList(APIView):
         data = {
             'code': 20000,
             'data': ingresses_list
+        }
+        return Response(data=data)
+
+
+class NetworkPolicyList(APIView):
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.NetworkingV1Api()
+        networkpolicies_list = []
+        if 'namespace' not in request.query_params.dict():
+            logger.info("No namespace Param, Getting All services")
+            networkpolicies = api.list_network_policy_for_all_namespaces().items
+        else:
+            query_ns = request.query_params['namespace']
+            networkpolicies = api.list_namespaced_network_policy(namespace=query_ns).items
+        logger.info(f"Getting networkpolicies Total: {len(networkpolicies)} networkpolicies")
+        for networkpolicy in networkpolicies:
+            networkpolicies_list.append(
+                dict(
+                    name=networkpolicy.metadata.name,
+                    namespace=networkpolicy.metadata.namespace,
+                    labels=networkpolicy.metadata.labels,
+                    creationTimestamp=datetime.strftime(networkpolicy.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+                )
+            )
+        data = {
+            'code': 20000,
+            'data': networkpolicies_list
         }
         return Response(data=data)
 
@@ -963,36 +992,6 @@ class JobList(APIView):
         data = {
             'code': 20000,
             'data': jobs_list
-        }
-        return Response(data=data)
-
-
-class NetworkPolicyList(APIView):
-    @staticmethod
-    def get(request, *args, **kwargs):
-        config.load_kube_config()
-        api = client.ExtensionsV1beta1Api()
-        networkpolicies_list = []
-        if 'namespace' not in request.query_params.dict():
-            logger.info("No namespace Param, Getting All services")
-            networkpolicies = api.list_network_policy_for_all_namespaces().items
-        else:
-            query_ns = request.query_params['namespace']
-            networkpolicies = api.list_namespaced_network_policy(namespace=query_ns).items
-        logger.info(f"Getting networkpolicies Total: {len(networkpolicies)} networkpolicies")
-        for networkpolicy in networkpolicies:
-            networkpolicies_list.append(
-                dict(
-                    name=networkpolicy.metadata.name,
-                    namespace=networkpolicy.metadata.namespace,
-                    labels=networkpolicy.metadata.labels,
-                    creationTimestamp=datetime.strftime(networkpolicy.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
-                    selector=networkpolicy.spec.selector,
-                )
-            )
-        data = {
-            'code': 20000,
-            'data': networkpolicies_list
         }
         return Response(data=data)
 
@@ -1104,11 +1103,61 @@ class PVList(APIView):
 
 
 class PVCList(APIView):
-    pass
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.CoreV1Api()
+        if 'namespace' not in request.query_params.dict():
+            logger.info("No namespace Param, Getting All services")
+            pvcs = api.list_persistent_volume_claim_for_all_namespaces().items
+        else:
+            query_ns = request.query_params['namespace']
+            pvcs = api.list_namespaced_persistent_volume_claim(namespace=query_ns).items
+        pvcs_list = []
+        logger.info(f"Getting pvcs Total: {len(pvcs)} pvcs")
+        for pvc in pvcs:
+            pvcs_list.append(
+                dict(
+                    name=pvc.metadata.name,
+                    namespace=pvc.metadata.namespace,
+                    labels=pvc.metadata.labels,
+                    creationTimestamp=datetime.strftime(pvc.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+                    access_modes=pvc.spec.access_modes,
+                    status=pvc.status.phase,
+                    capacity=pvc.status.capacity,
+                    volume_mode=pvc.spec.volume_mode,
+                    storage_class_name=pvc.spec.storage_class_name
+                )
+            )
+        data = {
+            'code': 20000,
+            'data': pvcs_list
+        }
+        return Response(data=data)
 
 
 class ServiceAccountList(APIView):
-    pass
+    @staticmethod
+    def get(request, *args, **kwargs):
+        config.load_kube_config()
+        api = client.CoreV1Api()
+        pvs_list = []
+        pvs = api.list_persistent_volume().items
+        logger.info(f"Getting pvs Total: {len(pvs)} pvs")
+        for pv in pvs:
+            pvs_list.append(
+                dict(
+                    name=pv.metadata.name,
+                    namespace=pv.metadata.namespace,
+                    labels=pv.metadata.labels,
+                    creationTimestamp=datetime.strftime(pv.metadata.creation_timestamp, '%Y-%m-%d %H:%M'),
+                )
+            )
+        data = {
+            'code': 20000,
+            'data': pvs_list
+        }
+        return Response(data=data)
 
 
 class RoleList(APIView):
@@ -1362,7 +1411,7 @@ class EventList(APIView):
                     name=event.metadata.name,
                     namespace=event.metadata.namespace,
                     labels=event.metadata.labels,
-                    lastTimestamp=datetime.strftime(event.last_timestamp, '%Y-%m-%d %H:%M'),
+                    lastTimestamp=datetime.strftime(event.last_timestamp, '%Y-%m-%d %H:%M') if event.last_timestamp else '',
                     message=event.message,
                     reason=event.reason,
                     source=dict(
