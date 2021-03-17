@@ -1,5 +1,5 @@
 # Xiaolong
-Xiaolong是一个基于DRF的K8s集群管理系统
+Xiaolong是一个基于DRF的K8s集群管理系统。类似octant和kubernetes-dashboard
 
 前端[xiaolong-admin](https://github.com/serchaofan/xiaolong-admin)
 

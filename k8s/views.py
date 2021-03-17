@@ -173,6 +173,36 @@ class PodList(APIView):
             pods = api.list_namespaced_pod(namespace=query_ns).items
         logger.info(f"Getting pods Total: {len(pods)} Pods")
         for pod in pods:
+            container_statuses_list = []
+            if pod.status.container_statuses:
+                for container_status in pod.status.container_statuses:
+                    container_statuses_list.append(
+                        dict(
+                            name=container_status.name,
+                            ready=container_status.ready,
+                            restart_count=container_status.restart_count,
+                            started=container_status.started,
+                            container_id=container_status.container_id,
+                            image=container_status.image,
+                            # last_state=dict(
+                            #     running=container_status.last_state.running,
+                            #     terminated=dict(
+                            #         exit_code=container_status.last_state.terminated.exit_code,
+                            #         finished_at=container_status.last_state.terminated.finished_at,
+                            #         message=container_status.last_state.terminated.message,
+                            #         reason=container_status.last_state.terminated.reason,
+                            #         started_at=container_status.last_state.terminated.started_at
+                            #     ),
+                            #     waiting=container_status.last_state.waiting
+                            # ),
+                            # state=dict(
+                            #     running=container_status.state.running,
+                            #     terminated=container_status.state.terminated,
+                            #     waiting=container_status.state.waiting
+                            # )
+                        )
+                    )
+
             pods_list.append(
                 dict(
                     name=pod.metadata.name,
@@ -182,7 +212,8 @@ class PodList(APIView):
                     nodename=pod.spec.node_name,
                     hostIP=pod.status.host_ip,
                     podIP=pod.status.pod_ip,
-                    startTime=datetime.strftime(pod.status.start_time, '%Y-%m-%d %H:%M')
+                    startTime=datetime.strftime(pod.status.start_time, '%Y-%m-%d %H:%M'),
+                    container_statuses=container_statuses_list
                 )
             )
         data = {
@@ -259,7 +290,16 @@ class PodInfo(APIView):
                         name=volume.name,
                         empty_dir=volume.empty_dir,
                         csi=volume.csi,
-                        config_map=volume.config_map,
+                        config_map=dict(
+                            default_mode=volume.config_map.default_mode if volume.config_map.default_mode else '',
+                    #        items=[dict(
+                    #            key=item.key,
+                    #            mode=item.mode,
+                    #            path=item.path
+                    #        ) for item in volume.config_map.items],
+                            name=volume.config_map.name,
+                            optional=volume.config_map.optional
+                        ) if volume.config_map else '',
                         host_path=volume.host_path,
                         nfs=volume.nfs,
                         persistent_volume_claim=volume.persistent_volume_claim,
