@@ -2,14 +2,19 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from datetime import datetime
 from loguru import logger
+import rest_framework.status as status
 
-from kubernetes import config,client
+from ..views import get_k8s_api_client
+
+from kubernetes import client
 
 class ReplicasetList(APIView):
     @staticmethod
     def get(request, *args, **kwargs):
-        config.load_kube_config()
-        api = client.AppsV1Api()
+        api_client = get_k8s_api_client(request=request)
+        if api_client == 400:
+            return Response({"data": "Cluster Param ERROR"}, status=status.HTTP_400_BAD_REQUEST)
+        api = client.AppsV1Api(api_client=api_client)
         replicasets_list = []
         if 'namespace' not in request.query_params.dict():
             logger.info("No namespace Param, Getting All replicasets")
@@ -90,12 +95,15 @@ class ReplicasetList(APIView):
                     status=f"{replicaset.status.ready_replicas}/{replicaset.status.replicas}" if replicaset.status.ready_replicas else "NULL"
                 )
             )
-        data = {
-            'code': 20000,
-            'data': replicasets_list
-        }
-        return Response(data=data)
+
+        return Response(data={'data': replicasets_list}, status=status.HTTP_200_OK)
 
 
 class ReplicasetInfo(APIView):
+    @staticmethod
+    def get(request, *args, **kwargs):
+        api_client = get_k8s_api_client(request=request)
+        if api_client == 400:
+            return Response({"data": "Cluster Param ERROR"}, status=status.HTTP_400_BAD_REQUEST)
+
     pass

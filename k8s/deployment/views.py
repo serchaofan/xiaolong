@@ -2,14 +2,17 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from datetime import datetime
 from loguru import logger
-
-from kubernetes import config,client
+import rest_framework.status as status
+from ..views import get_k8s_api_client
+from kubernetes import client
 
 class DeploymentList(APIView):
     @staticmethod
     def get(request, *args, **kwargs):
-        config.load_kube_config()
-        api = client.AppsV1Api()
+        api_client = get_k8s_api_client(request=request)
+        if api_client == 400:
+            return Response({"data": "Cluster Param ERROR"}, status=status.HTTP_400_BAD_REQUEST)
+        api = client.AppsV1Api(api_client=api_client)
         deployments_list = []
         if 'namespace' not in request.query_params.dict():
             logger.info("No namespace Param, Getting All deployments")
@@ -48,18 +51,20 @@ class DeploymentList(APIView):
                     status=f"{deployment.status.ready_replicas}/{deployment.status.replicas}"
                 )
             )
-        data = {
-            'code': 200,
-            'data': deployments_list
-        }
-        return Response(data=data)
+
+        return Response(data={'data': deployments_list}, status=status.HTTP_200_OK)
 
 
 class DeploymentInfo(APIView):
     @staticmethod
     def get(request, *args, **kwargs):
-        config.load_kube_config()
-        api = client.AppsV1Api()
+        api_client = get_k8s_api_client(request=request)
+        if api_client == 400:
+            return Response({"data": "Cluster Param ERROR"}, status=status.HTTP_400_BAD_REQUEST)
+        api = client.AppsV1Api(api_client=api_client)
+        if 'name' not in request.query_params.dict() or 'namespace' not in request.query_params.dict():
+            return Response({"data": "Name Or Namespace Param ERROR"}, status=status.HTTP_400_BAD_REQUEST)
+
         name = request.query_params['name']
         namespace = request.query_params['namespace']
         deployment = api.read_namespaced_deployment(name=name, namespace=namespace)
@@ -149,9 +154,5 @@ class DeploymentInfo(APIView):
                 updated_replicas=deployment.status.updated_replicas
             )
         )
-        data = {
-            'code': 200,
-            'data': deployment
-        }
-        return Response(data=data)
 
+        return Response(data={'data': deployment}, status=status.HTTP_200_OK)

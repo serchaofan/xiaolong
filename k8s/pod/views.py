@@ -3,13 +3,18 @@ from rest_framework.response import Response
 from datetime import datetime
 from loguru import logger
 
-from kubernetes import config,client
+import rest_framework.status as status
+
+from ..views import get_k8s_api_client
+from kubernetes import client
 
 class PodList(APIView):
     @staticmethod
     def get(request, *args, **kwargs):
-        config.load_kube_config()
-        api = client.CoreV1Api()
+        api_client = get_k8s_api_client(request=request)
+        if api_client == 400:
+            return Response({"data": "Cluster Param ERROR"}, status=status.HTTP_400_BAD_REQUEST)
+        api = client.CoreV1Api(api_client=api_client)
         pods_list = []
         if 'namespace' not in request.query_params.dict():
             logger.info("No namespace Param, Getting All pods")
@@ -62,18 +67,20 @@ class PodList(APIView):
                     container_statuses=container_statuses_list
                 )
             )
-        data = {
-            'code': 200,
-            'data': pods_list
-        }
-        return Response(data=data)
+
+        return Response(data={'data': pods_list}, status=status.HTTP_200_OK)
 
 
 class PodInfo(APIView):
     @staticmethod
     def get(request, *args, **kwargs):
-        config.load_kube_config()
-        api = client.CoreV1Api()
+        api_client = get_k8s_api_client(request=request)
+        if api_client == 400:
+            return Response({"data": "Cluster Param ERROR"}, status=status.HTTP_400_BAD_REQUEST)
+        api = client.CoreV1Api(api_client=api_client)
+        if 'name' not in request.query_params.dict() or 'namespace' not in request.query_params.dict():
+            return Response({"data": "Name Or Namespace Param ERROR"}, status=status.HTTP_400_BAD_REQUEST)
+
         name = request.query_params['name']
         namespace = request.query_params['namespace']
         pod = api.read_namespaced_pod(name=name, namespace=namespace)
@@ -227,9 +234,6 @@ class PodInfo(APIView):
             conditions=conditions_list,
             container_statuses=container_statuses_list
         )
-        data = {
-            'code': 200,
-            'data': pod
-        }
-        return Response(data=data)
+
+        return Response(data={'data': pod}, status=status.HTTP_200_OK)
 

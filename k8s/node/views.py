@@ -1,9 +1,9 @@
-from os import stat
 from rest_framework.views import APIView
 from rest_framework.response import Response
-import rest_framework.status as status
 from datetime import datetime
 from loguru import logger
+import rest_framework.status as status
+
 from ..views import get_k8s_api_client
 from kubernetes import client
 
@@ -41,11 +41,7 @@ class NodeList(APIView):
                 unschedulable=node.spec.unschedulable,
             ))
 
-        data = {
-            'code': 200,
-            'data': nodes_list
-        }
-        return Response(data=data)
+        return Response(data={'data': nodes_list}, status=status.HTTP_200_OK)
 
 class NodeInfo(APIView):
     @staticmethod
@@ -132,18 +128,16 @@ class NodeInfo(APIView):
                 kubelet_endpoint=dict(port=node.status.daemon_endpoints.kubelet_endpoint.port),
             )
         )
-        data = {
-            'code': 200,
-            'data': node
-        }
 
-        return Response(data=data)
+        return Response(data={'data': node}, status=status.HTTP_200_OK)
 
 class NamespaceList(APIView):
     @staticmethod
     def get(request, *args, **kwargs):
-        config.load_kube_config()
-        api = client.CoreV1Api()
+        api_client = get_k8s_api_client(request=request)
+        if api_client == 400:
+            return Response({"data": "Cluster Param ERROR"}, status=status.HTTP_400_BAD_REQUEST)
+        api = client.CoreV1Api(api_client=api_client)
         namespaces_list = []
         namespaces = api.list_namespace().items
         for namespace in namespaces:
@@ -154,8 +148,5 @@ class NamespaceList(APIView):
                     status=namespace.status.phase
                 )
             )
-        data = {
-            'code': 20000,
-            'data': namespaces_list
-        }
-        return Response(data=data)
+
+        return Response(data={'data': namespaces_list}, status=status.HTTP_200_OK)
